@@ -1,0 +1,82 @@
+// 1. DATASOURCE
+datasource db {
+  provider = "sqlite"
+  url      ="file:./dev.db"
+}
+
+// 2. GENERATOR
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 3. DATA MODELS
+model Rental {
+  id         Int       @id @default(autoincrement())
+  startDate  DateTime
+  endDate    DateTime
+  totalPrice Float
+  status     String    @default("PENDING")
+  userId     Int
+  carId      Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  car        Car       @relation(fields: [carId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, carId, startDate])
+  @@index([userId])
+  @@index([carId])
+  @@index([status])
+}
+
+model User {
+  id                   Int       @id @default(autoincrement())
+  email                String    @unique
+  password             String
+  name                 String
+  role                 String    @default("GUEST")
+  imageUrl             String?
+  drivingLicenceNumber String?   // Optional - required only for rentals
+  refreshToken         String?   // For refresh token mechanism
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+  rentals              Rental[]
+}
+
+model Car {
+  id          Int       @id @default(autoincrement())
+  make        String
+  model       String
+  year        Int
+  color       String
+  pricePerDay Float
+  available   Boolean   @default(true)
+  imageUrl    String?   // Primary/main image (for backward compatibility)
+  fuelType    String?   // e.g., "Petrol", "Diesel", "Electric", "Hybrid"
+  transmission String?  // e.g., "Manual", "Automatic", "CVT"
+  seats       Int?      // Number of seats
+  engine      String?   // Engine details (e.g., "2.0L Turbo", "V6")
+  mileage     Int?      // Current mileage in km
+  description String?   // Detailed description of the car
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  rentals     Rental[]
+  images      CarImage[] // Multiple images per car
+
+  @@index([available])
+}
+
+model CarImage {
+  id        Int       @id @default(autoincrement())
+  carId     Int
+  imageUrl  String    // Path to the uploaded image
+  isPrimary Boolean   @default(false) // Mark one image as primary
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  car       Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
+}
