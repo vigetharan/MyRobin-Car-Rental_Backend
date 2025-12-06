@@ -1,7 +1,0 @@
--- AlterTable
-ALTER TABLE "Car" ADD COLUMN "description" TEXT;
-ALTER TABLE "Car" ADD COLUMN "engine" TEXT;
-ALTER TABLE "Car" ADD COLUMN "fuelType" TEXT;
-ALTER TABLE "Car" ADD COLUMN "mileage" INTEGER;
-ALTER TABLE "Car" ADD COLUMN "seats" INTEGER;
-ALTER TABLE "Car" ADD COLUMN "transmission" TEXT;
