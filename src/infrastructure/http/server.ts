@@ -1,4 +1,5 @@
 import { ApolloServer } from '@apollo/server';
+import { startStandaloneServer } from '@apollo/server/standalone';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import http from 'http';
@@ -13,13 +14,13 @@ import { Context } from '../../interface/graphql/Context';
 
 dotenv.config();
 
-export const createServer = async () => {
+export const createExpressApp = () => {
   const app = express();
 
   // CORS middleware
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: process.env.CORS_ORIGIN || '*',
       credentials: true,
     }),
   );
@@ -33,24 +34,9 @@ export const createServer = async () => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Handle CORS preflight for upload endpoint
-  app.options(
-    '/upload',
-    cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
-      methods: ['POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
-    }),
-  );
-
   // Authenticated file upload endpoint
   app.post(
     '/upload',
-    cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
-    }),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const authHeader = req.headers.authorization;
@@ -116,82 +102,42 @@ export const createServer = async () => {
     },
   );
 
-  // Create Apollo Server
-  const server = new ApolloServer<Context>({
-    typeDefs,
-    resolvers,
-    csrfPrevention: true,
-  });
-
-  await server.start();
-
-  // GraphQL endpoint
-  app.post(
-    '/graphql',
-    cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
-    }),
-    express.json(),
-    async (req: Request, res: Response) => {
-      try {
-        const authHeader = req.headers.authorization || '';
-        let token = authHeader;
-        if (authHeader.startsWith('Bearer ')) {
-          token = authHeader.slice(7);
-        }
-        const user = await authMiddleware(token);
-
-        const context: Context = { user };
-
-        const result = await server.executeOperation(
-          {
-            query: req.body.query,
-            variables: req.body.variables,
-            operationName: req.body.operationName,
-          },
-          { contextValue: context },
-        );
-
-        if (result.body.kind === 'single') {
-          res.status(200).json(result.body.singleResult);
-        } else {
-          res.status(200).json(result.body);
-        }
-      } catch (error: any) {
-        logger.error('GraphQL request error:', error);
-        res.status(500).json({
-          errors: [{ message: error.message || 'Internal server error' }],
-        });
-      }
-    },
-  );
-
-  // Handle GET requests for GraphQL
-  app.get(
-    '/graphql',
-    cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
-    }),
-    (_req: Request, res: Response) => {
-      res.json({ message: 'GraphQL endpoint. Use POST for queries.' });
-    },
-  );
-
-  return { app, server };
+  return app;
 };
 
 export const startServer = async () => {
-  const PORT = Number(process.env.PORT) || 4000;
-  const { app } = await createServer();
+  const GRAPHQL_PORT = Number(process.env.PORT) || 4000;
+  const EXPRESS_PORT = Number(process.env.EXPRESS_PORT) || 4001;
 
+  // Start Express app for file uploads and health check
+  const app = createExpressApp();
   const httpServer = http.createServer(app);
-
-  httpServer.listen(PORT, () => {
-    logger.info(`🚀 Express server ready at http://localhost:${PORT}`);
-    logger.info(`📁 File uploads available at http://localhost:${PORT}/upload`);
-    logger.info(`❤️  Health check at http://localhost:${PORT}/health`);
-    logger.info(`📊 GraphQL endpoint: http://localhost:${PORT}/graphql`);
+  
+  httpServer.listen(EXPRESS_PORT, () => {
+    logger.info(`📁 File uploads available at http://localhost:${EXPRESS_PORT}/upload`);
+    logger.info(`❤️  Health check at http://localhost:${EXPRESS_PORT}/health`);
   });
+
+  // Start Apollo Server with built-in Sandbox
+  const server = new ApolloServer<Context>({
+    typeDefs,
+    resolvers,
+    introspection: true, // Enable introspection for Sandbox
+  });
+
+  const { url } = await startStandaloneServer(server, {
+    listen: { port: GRAPHQL_PORT },
+    context: async ({ req }) => {
+      const authHeader = req.headers.authorization || '';
+      let token = authHeader;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
+      }
+      const user = await authMiddleware(token);
+      return { user };
+    },
+  });
+
+  logger.info(`🚀 Apollo Server ready at ${url}`);
+  logger.info(`� Open ${url} in browser for Apollo Sandbox`);
 };

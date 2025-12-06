@@ -61,6 +61,7 @@ export const typeDefs = gql`
 
   type RefreshTokenPayload {
     token: String!
+    refreshToken: String
   }
 
   input CreateUserInput {
