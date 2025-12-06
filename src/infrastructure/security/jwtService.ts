@@ -1,7 +1,7 @@
 import jwt, { SignOptions, JwtPayload } from 'jsonwebtoken';
 
 export interface TokenPayload {
-  userId: number;
+  userId: string;
   email: string;
   role: string;
 }
@@ -36,7 +36,7 @@ export const generateAccessToken = (payload: TokenPayload): string => {
   } as SignOptions);
 };
 
-export const generateRefreshToken = (userId: number): string => {
+export const generateRefreshToken = (userId: string): string => {
   const secret = process.env.JWT_REFRESH_SECRET;
   if (!secret) {
     throw new Error('JWT_REFRESH_SECRET is not configured');
@@ -54,12 +54,12 @@ export const verifyAccessToken = (token: string): TokenPayload => {
   return jwt.verify(token, secret) as TokenPayload;
 };
 
-export const verifyRefreshToken = (token: string): { userId: number } => {
+export const verifyRefreshToken = (token: string): { userId: string } => {
   const secret = process.env.JWT_REFRESH_SECRET;
   if (!secret) {
     throw new Error('JWT_REFRESH_SECRET is not configured');
   }
-  return jwt.verify(token, secret) as { userId: number };
+  return jwt.verify(token, secret) as { userId: string };
 };
 
 // Decode token without verification (for getting expiry info)

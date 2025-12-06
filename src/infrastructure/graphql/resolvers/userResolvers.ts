@@ -1,11 +1,15 @@
 import { PrismaUserRepository } from '../../database/PrismaUserRepository';
-import { GetUserByIdUseCase } from '../../../application/auth/use-cases/GetUserByIdUseCase';
-import { GetAllUsersUseCase } from '../../../application/auth/use-cases/GetAllUsersUseCase';
-import { AuthenticationError, AuthorizationError } from '../../../domain/errors/AppError';
+import { GetUserByIdUseCase, GetAllUsersUseCase } from '../../../application/auth';
+import { AuthenticationError, AuthorizationError } from '../../../core/errors';
 import { Context } from '../../../interface/graphql/Context';
 
+// Infrastructure dependencies (injected into use cases)
 const userRepo = new PrismaUserRepository();
 
+/**
+ * User GraphQL resolvers
+ * Delivery layer - only handles GraphQL concerns and delegates to use cases
+ */
 export const userResolvers = {
   Query: {
     me: async (_parent: unknown, _args: unknown, ctx: Context) => {
@@ -27,7 +31,7 @@ export const userResolvers = {
       return useCase.execute();
     },
 
-    user: async (_parent: unknown, { id }: { id: number }, ctx: Context) => {
+    user: async (_parent: unknown, { id }: { id: string }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }

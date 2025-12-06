@@ -3,6 +3,9 @@ import { getPrismaClient } from './prismaClient';
 import { Car } from '../../domain/car/Car';
 import { CarRepository, CarFilters, PaginatedCars } from '../../application/car/ports/CarRepository';
 
+/**
+ * Prisma implementation of CarRepository port
+ */
 export class PrismaCarRepository implements CarRepository {
   private prisma: PrismaClient;
 
@@ -15,7 +18,7 @@ export class PrismaCarRepository implements CarRepository {
     return car as unknown as Car;
   }
 
-  async findById(id: number): Promise<Car | null> {
+  async findById(id: string): Promise<Car | null> {
     const car = await this.prisma.car.findUnique({
       where: { id, deletedAt: null },
       include: { images: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] } },
@@ -61,15 +64,47 @@ export class PrismaCarRepository implements CarRepository {
     };
   }
 
-  async update(id: number, data: Partial<Omit<Car, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Car> {
+  async update(id: string, data: Partial<Omit<Car, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Car> {
     const car = await this.prisma.car.update({ where: { id }, data });
     return car as unknown as Car;
   }
 
-  async softDelete(id: number): Promise<void> {
+  async softDelete(id: string): Promise<void> {
     await this.prisma.car.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  async findAvailable(startDate: Date, endDate: Date): Promise<Car[]> {
+    const cars = await this.prisma.car.findMany({
+      where: {
+        deletedAt: null,
+        available: true,
+        rentals: {
+          none: {
+            AND: [
+              { startDate: { lte: endDate } },
+              { endDate: { gte: startDate } },
+              { status: { in: ['PENDING', 'ACTIVE'] } },
+            ],
+          },
+        },
+      },
+      include: { images: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] } },
+    });
+
+    return cars as unknown as Car[];
+  }
+
+  async hasActiveRentals(carId: string): Promise<boolean> {
+    const count = await this.prisma.rental.count({
+      where: {
+        carId,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+    });
+    return count > 0;
   }
 }

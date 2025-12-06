@@ -1,39 +1,42 @@
-import { PrismaClient } from '@prisma/client';
-import { getPrismaClient } from '../../../infrastructure/database/prismaClient';
-import { NotFoundError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { CarImage } from '../../../domain/car/CarImage';
+import { NotFoundError } from '../../../core/errors';
+import { CarRepository } from '../ports/CarRepository';
+import { CarImageRepository } from '../ports/CarImageRepository';
 
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
+
+/**
+ * Use case: Add an image to a car
+ */
 export class AddCarImageUseCase {
-  private prisma: PrismaClient;
+  constructor(
+    private readonly carRepository: CarRepository,
+    private readonly carImageRepository: CarImageRepository,
+    private readonly logger?: Logger
+  ) {}
 
-  constructor(prismaClient?: PrismaClient) {
-    this.prisma = prismaClient ?? getPrismaClient();
-  }
-
-  async execute(carId: number, imageUrl: string, isPrimary: boolean = false) {
-    const car = await this.prisma.car.findUnique({
-      where: { id: carId, deletedAt: null },
-    });
+  async execute(carId: string, imageUrl: string, isPrimary: boolean = false): Promise<CarImage> {
+    const car = await this.carRepository.findById(carId);
     if (!car) {
       throw new NotFoundError('Car');
     }
 
     if (isPrimary) {
-      await this.prisma.carImage.updateMany({
-        where: { carId, isPrimary: true },
-        data: { isPrimary: false },
-      });
+      await this.carImageRepository.resetPrimaryForCar(carId);
     }
 
-    const carImage = await this.prisma.carImage.create({
-      data: {
-        carId,
-        imageUrl,
-        isPrimary,
-      },
+    const carImage = await this.carImageRepository.create({
+      carId,
+      imageUrl,
+      isPrimary,
     });
 
-    logger.info(`Image added to car ${carId}: ${imageUrl}`);
+    this.logger?.info(`Image added to car ${carId}: ${imageUrl}`);
     return carImage;
   }
 }

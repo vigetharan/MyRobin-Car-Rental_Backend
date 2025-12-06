@@ -1,9 +1,15 @@
-import bcrypt from 'bcryptjs';
 import { UserRepository } from '../ports/UserRepository';
+import { TokenService } from '../ports/TokenService';
+import { PasswordHasher } from '../ports/PasswordHasher';
 import { UserRole } from '../../../domain/enums/UserRole';
-import { ConflictError } from '../../../domain/errors/AppError';
-import { generateAccessToken, generateRefreshToken } from '../../../infrastructure/security/jwtService';
-import { logger } from '../../../infrastructure/logging/logger';
+import { ConflictError } from '../../../core/errors';
+
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
 
 export interface CreateAdminInput {
   email: string;
@@ -12,8 +18,16 @@ export interface CreateAdminInput {
   drivingLicenceNumber?: string;
 }
 
+/**
+ * Use case: Create admin user
+ */
 export class CreateAdminUseCase {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly tokenService: TokenService,
+    private readonly passwordHasher: PasswordHasher,
+    private readonly logger?: Logger
+  ) {}
 
   async execute(input: CreateAdminInput) {
     const existingUser = await this.userRepository.findByEmail(input.email);
@@ -21,7 +35,7 @@ export class CreateAdminUseCase {
       throw new ConflictError('Email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(input.password, 12);
+    const hashedPassword = await this.passwordHasher.hash(input.password);
 
     const user = await this.userRepository.create({
       email: input.email,
@@ -31,12 +45,12 @@ export class CreateAdminUseCase {
       drivingLicenceNumber: input.drivingLicenceNumber,
     });
 
-    const token = generateAccessToken({ userId: user.id, email: user.email, role: user.role as string });
-    const refreshToken = generateRefreshToken(user.id);
+    const token = this.tokenService.generateAccessToken({ userId: user.id, email: user.email, role: user.role as string });
+    const refreshToken = this.tokenService.generateRefreshToken(user.id);
 
     await this.userRepository.updateRefreshToken(user.id, refreshToken);
 
-    logger.info(`Admin user created: ${user.email}`);
+    this.logger?.info(`Admin user created: ${user.email}`);
 
     return {
       token,

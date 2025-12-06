@@ -1,13 +1,25 @@
 import { RentalRepository } from '../ports/RentalRepository';
 import { RentalStatus } from '../../../domain/enums/RentalStatus';
 import { Rental } from '../../../domain/rental/Rental';
-import { NotFoundError, ConflictError, AuthorizationError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { NotFoundError, ConflictError, AuthorizationError } from '../../../core/errors';
 
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
+
+/**
+ * Use case: Cancel a rental
+ */
 export class CancelRentalUseCase {
-  constructor(private readonly rentalRepository: RentalRepository) {}
+  constructor(
+    private readonly rentalRepository: RentalRepository,
+    private readonly logger?: Logger
+  ) {}
 
-  async execute(rentalId: number, userId: number, userRole: string): Promise<Rental> {
+  async execute(rentalId: string, userId: string, userRole: string): Promise<Rental> {
     const rental = await this.rentalRepository.findById(rentalId);
     if (!rental) {
       throw new NotFoundError('Rental');
@@ -22,7 +34,7 @@ export class CancelRentalUseCase {
     }
 
     const updatedRental = await this.rentalRepository.updateStatus(rentalId, RentalStatus.CANCELLED);
-    logger.info(`Rental cancelled: ID ${rentalId} by User ${userId}`);
+    this.logger?.info(`Rental cancelled: ID ${rentalId} by User ${userId}`);
     return updatedRental;
   }
 }

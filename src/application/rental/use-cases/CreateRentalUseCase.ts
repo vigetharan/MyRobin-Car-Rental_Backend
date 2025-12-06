@@ -3,25 +3,35 @@ import { UserRepository } from '../../auth/ports/UserRepository';
 import { CarRepository } from '../../car/ports/CarRepository';
 import { RentalStatus } from '../../../domain/enums/RentalStatus';
 import { Rental } from '../../../domain/rental/Rental';
-import { NotFoundError, ConflictError, ValidationError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { NotFoundError, ConflictError, ValidationError } from '../../../core/errors';
+
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
 
 export interface CreateRentalInput {
-  carId: number;
+  carId: string;
   startDate: Date;
   endDate: Date;
   drivingLicenceNumber?: string;
   additionalInfo?: string;
 }
 
+/**
+ * Use case: Create a new rental
+ */
 export class CreateRentalUseCase {
   constructor(
     private readonly rentalRepository: RentalRepository,
     private readonly userRepository: UserRepository,
     private readonly carRepository: CarRepository,
+    private readonly logger?: Logger,
   ) {}
 
-  async execute(userId: number, input: CreateRentalInput): Promise<Rental> {
+  async execute(userId: string, input: CreateRentalInput): Promise<Rental> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new NotFoundError('User');
@@ -40,9 +50,9 @@ export class CreateRentalUseCase {
       const newRole = user.role === 'GUEST' ? 'USER' : undefined;
       await this.userRepository.updateDrivingLicence(userId, input.drivingLicenceNumber.trim(), newRole);
       if (newRole) {
-        logger.info(`User ${userId} upgraded from GUEST to USER`);
+        this.logger?.info(`User ${userId} upgraded from GUEST to USER`);
       }
-      logger.info(`Driving licence added to user profile: User ${userId}`);
+      this.logger?.info(`Driving licence added to user profile: User ${userId}`);
     }
 
     const userOverlapping = await this.rentalRepository.findUserOverlapping(
@@ -81,7 +91,7 @@ export class CreateRentalUseCase {
       status: RentalStatus.ACTIVE,
     });
 
-    logger.info(`Rental created: User ${userId} rented Car ${input.carId}`);
+    this.logger?.info(`Rental created: User ${userId} rented Car ${input.carId}`);
     return rental;
   }
 }

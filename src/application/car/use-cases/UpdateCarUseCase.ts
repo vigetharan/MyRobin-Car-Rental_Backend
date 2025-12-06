@@ -1,17 +1,29 @@
 import { CarRepository } from '../ports/CarRepository';
 import { Car } from '../../../domain/car/Car';
 import { carUpdateValidation } from '../../../validation/schemas';
-import { NotFoundError, ValidationError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { NotFoundError, ValidationError } from '../../../core/errors';
+
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
 
 type UpdateCarInput = Partial<
   Omit<Car, 'id' | 'createdAt' | 'updatedAt'>
 >;
 
+/**
+ * Use case: Update an existing car
+ */
 export class UpdateCarUseCase {
-  constructor(private readonly carRepository: CarRepository) {}
+  constructor(
+    private readonly carRepository: CarRepository,
+    private readonly logger?: Logger
+  ) {}
 
-  async execute(id: number, input: UpdateCarInput): Promise<Car> {
+  async execute(id: string, input: UpdateCarInput): Promise<Car> {
     const { error, value } = carUpdateValidation.validate(input, { abortEarly: false });
     if (error) {
       throw new ValidationError(error.details.map(d => d.message).join(', '));
@@ -30,7 +42,7 @@ export class UpdateCarUseCase {
     }
 
     const car = await this.carRepository.update(id, value);
-    logger.info(`Car updated: ${car.make} ${car.model} (ID: ${car.id})`);
+    this.logger?.info(`Car updated: ${car.make} ${car.model} (ID: ${car.id})`);
     return car;
   }
 }

@@ -1,10 +1,13 @@
 import { UserRepository } from '../ports/UserRepository';
-import { NotFoundError } from '../../../domain/errors/AppError';
+import { NotFoundError } from '../../../core/errors';
 
+/**
+ * Use case: Get user by ID
+ */
 export class GetUserByIdUseCase {
   constructor(private readonly userRepository: UserRepository) {}
 
-  async execute(userId: number) {
+  async execute(userId: string) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new NotFoundError('User');

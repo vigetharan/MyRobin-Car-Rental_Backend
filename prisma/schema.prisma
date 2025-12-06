@@ -1,7 +1,7 @@
 // 1. DATASOURCE
 datasource db {
   provider = "sqlite"
-  url      ="file:./dev.db"
+  url      = "file:./dev.db"
 }
 
 // 2. GENERATOR
@@ -10,14 +10,16 @@ generator client {
 }
 
 // 3. DATA MODELS
+// Using UUIDs for all primary keys for security (non-predictable IDs)
+
 model Rental {
-  id         Int       @id @default(autoincrement())
+  id         String    @id @default(uuid())
   startDate  DateTime
   endDate    DateTime
   totalPrice Float
   status     String    @default("PENDING")
-  userId     Int
-  carId      Int
+  userId     String
+  carId      String
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
@@ -31,22 +33,24 @@ model Rental {
 }
 
 model User {
-  id                   Int       @id @default(autoincrement())
+  id                   String    @id @default(uuid())
   email                String    @unique
   password             String
   name                 String
   role                 String    @default("GUEST")
   imageUrl             String?
   drivingLicenceNumber String?   // Optional - required only for rentals
-  refreshToken         String?   // For refresh token mechanism
+  refreshToken         String?   // For refresh token mechanism (stored as hash)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   deletedAt            DateTime?
   rentals              Rental[]
+
+  @@index([email])
 }
 
 model Car {
-  id          Int       @id @default(autoincrement())
+  id          String    @id @default(uuid())
   make        String
   model       String
   year        Int
@@ -67,11 +71,12 @@ model Car {
   images      CarImage[] // Multiple images per car
 
   @@index([available])
+  @@index([make])
 }
 
 model CarImage {
-  id        Int       @id @default(autoincrement())
-  carId     Int
+  id        String    @id @default(uuid())
+  carId     String
   imageUrl  String    // Path to the uploaded image
   isPrimary Boolean   @default(false) // Mark one image as primary
   createdAt DateTime  @default(now())

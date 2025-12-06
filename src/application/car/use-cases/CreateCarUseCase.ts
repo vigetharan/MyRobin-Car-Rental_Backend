@@ -1,16 +1,28 @@
 import { CarRepository } from '../ports/CarRepository';
 import { Car } from '../../../domain/car/Car';
 import { carValidation } from '../../../validation/schemas';
-import { ValidationError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { ValidationError } from '../../../core/errors';
+
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
 
 type CreateCarInput = Omit<
   Car,
   'id' | 'createdAt' | 'updatedAt' | 'available'
 > & { available?: boolean };
 
+/**
+ * Use case: Create a new car
+ */
 export class CreateCarUseCase {
-  constructor(private readonly carRepository: CarRepository) {}
+  constructor(
+    private readonly carRepository: CarRepository,
+    private readonly logger?: Logger
+  ) {}
 
   async execute(input: CreateCarInput): Promise<Car> {
     const { error, value } = carValidation.validate(input, { abortEarly: false });
@@ -26,7 +38,7 @@ export class CreateCarUseCase {
     if (value.description === '') value.description = null;
 
     const car = await this.carRepository.create(value);
-    logger.info(`Car created: ${car.make} ${car.model} (ID: ${car.id})`);
+    this.logger?.info(`Car created: ${car.make} ${car.model} (ID: ${car.id})`);
     return car;
   }
 }

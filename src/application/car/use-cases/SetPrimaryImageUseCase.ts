@@ -1,34 +1,36 @@
-import { PrismaClient } from '@prisma/client';
-import { getPrismaClient } from '../../../infrastructure/database/prismaClient';
-import { NotFoundError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { CarImage } from '../../../domain/car/CarImage';
+import { NotFoundError } from '../../../core/errors';
+import { CarImageRepository } from '../ports/CarImageRepository';
 
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
+
+/**
+ * Use case: Set an image as the primary image for a car
+ */
 export class SetPrimaryImageUseCase {
-  private prisma: PrismaClient;
+  constructor(
+    private readonly carImageRepository: CarImageRepository,
+    private readonly logger?: Logger
+  ) {}
 
-  constructor(prismaClient?: PrismaClient) {
-    this.prisma = prismaClient ?? getPrismaClient();
-  }
-
-  async execute(imageId: number) {
-    const image = await this.prisma.carImage.findUnique({
-      where: { id: imageId },
-    });
+  async execute(imageId: string): Promise<CarImage> {
+    const image = await this.carImageRepository.findById(imageId);
     if (!image) {
       throw new NotFoundError('Car image');
     }
 
-    await this.prisma.carImage.updateMany({
-      where: { carId: image.carId, isPrimary: true },
-      data: { isPrimary: false },
-    });
+    // Reset all other images for this car to non-primary
+    await this.carImageRepository.resetPrimaryForCar(image.carId);
 
-    const updatedImage = await this.prisma.carImage.update({
-      where: { id: imageId },
-      data: { isPrimary: true },
-    });
+    // Set this image as primary
+    const updatedImage = await this.carImageRepository.update(imageId, { isPrimary: true });
 
-    logger.info(`Primary image set for car ${image.carId}: ${image.imageUrl} (ID: ${imageId})`);
+    this.logger?.info(`Primary image set for car ${image.carId}: ${image.imageUrl} (ID: ${imageId})`);
     return updatedImage;
   }
 }

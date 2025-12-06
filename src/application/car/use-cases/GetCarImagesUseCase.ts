@@ -1,25 +1,23 @@
-import { PrismaClient } from '@prisma/client';
-import { getPrismaClient } from '../../../infrastructure/database/prismaClient';
-import { NotFoundError } from '../../../domain/errors/AppError';
+import { CarImage } from '../../../domain/car/CarImage';
+import { NotFoundError } from '../../../core/errors';
+import { CarRepository } from '../ports/CarRepository';
+import { CarImageRepository } from '../ports/CarImageRepository';
 
+/**
+ * Use case: Get all images for a car
+ */
 export class GetCarImagesUseCase {
-  private prisma: PrismaClient;
+  constructor(
+    private readonly carRepository: CarRepository,
+    private readonly carImageRepository: CarImageRepository
+  ) {}
 
-  constructor(prismaClient?: PrismaClient) {
-    this.prisma = prismaClient ?? getPrismaClient();
-  }
-
-  async execute(carId: number) {
-    const car = await this.prisma.car.findUnique({
-      where: { id: carId, deletedAt: null },
-    });
+  async execute(carId: string): Promise<CarImage[]> {
+    const car = await this.carRepository.findById(carId);
     if (!car) {
       throw new NotFoundError('Car');
     }
 
-    return this.prisma.carImage.findMany({
-      where: { carId },
-      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-    });
+    return this.carImageRepository.findByCarId(carId);
   }
 }

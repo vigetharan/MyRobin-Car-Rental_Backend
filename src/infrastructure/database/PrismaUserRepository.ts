@@ -15,7 +15,7 @@ export class PrismaUserRepository implements UserRepository {
     return user as unknown as User;
   }
 
-  async findById(id: number): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
     });
@@ -37,7 +37,7 @@ export class PrismaUserRepository implements UserRepository {
     return users as unknown as User[];
   }
 
-  async update(id: number, data: UpdateUserData): Promise<User> {
+  async update(id: string, data: UpdateUserData): Promise<User> {
     const user = await this.prisma.user.update({
       where: { id },
       data,
@@ -45,14 +45,14 @@ export class PrismaUserRepository implements UserRepository {
     return user as unknown as User;
   }
 
-  async updatePassword(id: number, hashedPassword: string): Promise<void> {
+  async updatePassword(id: string, hashedPassword: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { password: hashedPassword },
     });
   }
 
-  async updateRole(id: number, role: string): Promise<User> {
+  async updateRole(id: string, role: string): Promise<User> {
     const user = await this.prisma.user.update({
       where: { id },
       data: { role },
@@ -60,14 +60,14 @@ export class PrismaUserRepository implements UserRepository {
     return user as unknown as User;
   }
 
-  async updateRefreshToken(id: number, refreshToken: string | null): Promise<void> {
+  async updateRefreshToken(id: string, refreshToken: string | null): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { refreshToken },
     });
   }
 
-  async updateDrivingLicence(id: number, drivingLicenceNumber: string, role?: string): Promise<void> {
+  async updateDrivingLicence(id: string, drivingLicenceNumber: string, role?: string): Promise<void> {
     const data: any = { drivingLicenceNumber };
     if (role) {
       data.role = role;
@@ -78,7 +78,7 @@ export class PrismaUserRepository implements UserRepository {
     });
   }
 
-  async softDelete(id: number): Promise<void> {
+  async softDelete(id: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { deletedAt: new Date() },

@@ -34,7 +34,7 @@ export const typeDefs = gql`
 
   type CarImage {
     id: ID!
-    carId: Int!
+    carId: ID!
     imageUrl: String!
     isPrimary: Boolean!
     createdAt: String!
@@ -92,7 +92,7 @@ export const typeDefs = gql`
   }
 
   input CreateRentalInput {
-    carId: Int!
+    carId: ID!
     startDate: String!
     endDate: String!
     drivingLicenceNumber: String
@@ -157,17 +157,17 @@ export const typeDefs = gql`
   type Query {
     me: User
     cars: [Car!]!
-    car(id: Int!): Car
+    car(id: ID!): Car
     rentals: [Rental!]!
-    rental(id: Int!): Rental
+    rental(id: ID!): Rental
     allRentals: [Rental!]!
     users: [User!]!
-    user(id: Int!): User
+    user(id: ID!): User
     availableCars(startDate: String!, endDate: String!): [Car!]!
-    carUnavailableDates(carId: Int!): [UnavailableDateRange!]!
+    carUnavailableDates(carId: ID!): [UnavailableDateRange!]!
     userActiveRentals: [Rental!]!
-    carRentalHistory(carId: Int!): [Rental!]!
-    carImages(carId: Int!): [CarImage!]!
+    carRentalHistory(carId: ID!): [Rental!]!
+    carImages(carId: ID!): [CarImage!]!
     rentalStats: RentalStats!
   }
 
@@ -178,20 +178,20 @@ export const typeDefs = gql`
     refreshToken(refreshToken: String!): RefreshTokenPayload!
     createAdmin(input: CreateUserInput!): AuthPayload!
     createCar(input: CreateCarInput!): Car!
-    updateCar(id: Int!, input: UpdateCarInput!): Car!
-    deleteCar(id: Int!): String!
-    addCarImage(carId: Int!, imageUrl: String!, isPrimary: Boolean): CarImage!
-    deleteCarImage(imageId: Int!): String!
-    setPrimaryImage(imageId: Int!): CarImage!
+    updateCar(id: ID!, input: UpdateCarInput!): Car!
+    deleteCar(id: ID!): String!
+    addCarImage(carId: ID!, imageUrl: String!, isPrimary: Boolean): CarImage!
+    deleteCarImage(imageId: ID!): String!
+    setPrimaryImage(imageId: ID!): CarImage!
     createRental(input: CreateRentalInput!): Rental!
-    cancelRental(id: Int!): Rental!
-    completeRental(id: Int!): Rental!
-    updateRental(id: Int!, input: UpdateRentalInput!): Rental!
-    extendRental(id: Int!, input: ExtendRentalInput!): Rental!
-    deleteRental(id: Int!): String!
+    cancelRental(id: ID!): Rental!
+    completeRental(id: ID!): Rental!
+    updateRental(id: ID!, input: UpdateRentalInput!): Rental!
+    extendRental(id: ID!, input: ExtendRentalInput!): Rental!
+    deleteRental(id: ID!): String!
     updateUser(input: UpdateUserInput!): User!
     changePassword(input: ChangePasswordInput!): String!
-    deleteUser(id: Int!): String!
-    updateUserRole(id: Int!, input: UpdateRoleInput!): User!
+    deleteUser(id: ID!): String!
+    updateUserRole(id: ID!, input: UpdateRoleInput!): User!
   }
 `;

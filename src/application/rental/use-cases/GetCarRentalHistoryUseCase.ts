@@ -4,7 +4,7 @@ import { Rental } from '../../../domain/rental/Rental';
 export class GetCarRentalHistoryUseCase {
   constructor(private readonly rentalRepository: RentalRepository) {}
 
-  async execute(carId: number): Promise<Rental[]> {
+  async execute(carId: string): Promise<Rental[]> {
     return this.rentalRepository.findByCarId(carId);
   }
 }

@@ -15,10 +15,24 @@ export interface PaginatedCars {
   totalPages: number;
 }
 
+/**
+ * Port for car persistence operations
+ */
 export interface CarRepository {
   create(data: Omit<Car, 'id' | 'createdAt' | 'updatedAt'>): Promise<Car>;
-  findById(id: number): Promise<Car | null>;
+  findById(id: string): Promise<Car | null>;
   list(page: number, limit: number, filters?: CarFilters): Promise<PaginatedCars>;
-  update(id: number, data: Partial<Omit<Car, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Car>;
-  softDelete(id: number): Promise<void>;
+  update(id: string, data: Partial<Omit<Car, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Car>;
+  softDelete(id: string): Promise<void>;
+
+  /**
+   * Find cars available for rental in a given date range
+   * (no overlapping PENDING/ACTIVE rentals)
+   */
+  findAvailable(startDate: Date, endDate: Date): Promise<Car[]>;
+
+  /**
+   * Check if a car has any active rentals
+   */
+  hasActiveRentals(carId: string): Promise<boolean>;
 }

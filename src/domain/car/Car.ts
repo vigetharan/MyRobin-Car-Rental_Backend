@@ -1,5 +1,8 @@
+/**
+ * Car domain entity
+ */
 export interface Car {
-  id: number;
+  id: string; // UUID for security (non-predictable)
   make: string;
   model: string;
   year: number;

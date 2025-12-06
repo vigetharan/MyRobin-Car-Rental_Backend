@@ -1,27 +1,30 @@
-import { PrismaClient } from '@prisma/client';
-import { getPrismaClient } from '../../../infrastructure/database/prismaClient';
-import { NotFoundError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { NotFoundError } from '../../../core/errors';
+import { CarImageRepository } from '../ports/CarImageRepository';
 
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
+
+/**
+ * Use case: Delete a car image
+ */
 export class DeleteCarImageUseCase {
-  private prisma: PrismaClient;
+  constructor(
+    private readonly carImageRepository: CarImageRepository,
+    private readonly logger?: Logger
+  ) {}
 
-  constructor(prismaClient?: PrismaClient) {
-    this.prisma = prismaClient ?? getPrismaClient();
-  }
-
-  async execute(imageId: number): Promise<void> {
-    const image = await this.prisma.carImage.findUnique({
-      where: { id: imageId },
-    });
+  async execute(imageId: string): Promise<void> {
+    const image = await this.carImageRepository.findById(imageId);
     if (!image) {
       throw new NotFoundError('Car image');
     }
 
-    await this.prisma.carImage.delete({
-      where: { id: imageId },
-    });
+    await this.carImageRepository.delete(imageId);
 
-    logger.info(`Image deleted: ${image.imageUrl} (ID: ${imageId})`);
+    this.logger?.info(`Image deleted: ${image.imageUrl} (ID: ${imageId})`);
   }
 }

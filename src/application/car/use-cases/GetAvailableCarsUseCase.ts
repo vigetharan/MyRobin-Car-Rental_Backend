@@ -1,32 +1,13 @@
-import { PrismaClient } from '@prisma/client';
-import { getPrismaClient } from '../../../infrastructure/database/prismaClient';
 import { Car } from '../../../domain/car/Car';
+import { CarRepository } from '../ports/CarRepository';
 
+/**
+ * Use case: Get cars available for rental in a date range
+ */
 export class GetAvailableCarsUseCase {
-  private prisma: PrismaClient;
-
-  constructor(prismaClient?: PrismaClient) {
-    this.prisma = prismaClient ?? getPrismaClient();
-  }
+  constructor(private readonly carRepository: CarRepository) {}
 
   async execute(startDate: Date, endDate: Date): Promise<Car[]> {
-    const cars = await this.prisma.car.findMany({
-      where: {
-        deletedAt: null,
-        available: true,
-        rentals: {
-          none: {
-            AND: [
-              { startDate: { lte: endDate } },
-              { endDate: { gte: startDate } },
-              { status: { in: ['PENDING', 'ACTIVE'] } },
-            ],
-          },
-        },
-      },
-      include: { images: { orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] } },
-    });
-
-    return cars as unknown as Car[];
+    return this.carRepository.findAvailable(startDate, endDate);
   }
 }

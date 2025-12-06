@@ -2,8 +2,8 @@ import { Rental } from '../../../domain/rental/Rental';
 import { RentalStatus } from '../../../domain/enums/RentalStatus';
 
 export interface CreateRentalData {
-  userId: number;
-  carId: number;
+  userId: string;
+  carId: string;
   startDate: Date;
   endDate: Date;
   totalPrice: number;
@@ -12,15 +12,15 @@ export interface CreateRentalData {
 
 export interface RentalRepository {
   create(data: CreateRentalData): Promise<Rental>;
-  findById(id: number): Promise<Rental | null>;
+  findById(id: string): Promise<Rental | null>;
   findAll(): Promise<Rental[]>;
-  findByUserId(userId: number): Promise<Rental[]>;
-  findActiveByUserId(userId: number): Promise<Rental[]>;
-  findByCarId(carId: number): Promise<Rental[]>;
-  findOverlapping(carId: number, startDate: Date, endDate: Date, excludeRentalId?: number): Promise<Rental | null>;
-  findUserOverlapping(userId: number, startDate: Date, endDate: Date, excludeRentalId?: number): Promise<Rental | null>;
-  updateStatus(id: number, status: RentalStatus): Promise<Rental>;
-  updateDates(id: number, startDate: Date, endDate: Date, totalPrice: number): Promise<Rental>;
-  getUnavailableDates(carId: number): Promise<{ startDate: Date; endDate: Date }[]>;
-  delete(id: number): Promise<void>;
+  findByUserId(userId: string): Promise<Rental[]>;
+  findActiveByUserId(userId: string): Promise<Rental[]>;
+  findByCarId(carId: string): Promise<Rental[]>;
+  findOverlapping(carId: string, startDate: Date, endDate: Date, excludeRentalId?: string): Promise<Rental | null>;
+  findUserOverlapping(userId: string, startDate: Date, endDate: Date, excludeRentalId?: string): Promise<Rental | null>;
+  updateStatus(id: string, status: RentalStatus): Promise<Rental>;
+  updateDates(id: string, startDate: Date, endDate: Date, totalPrice: number): Promise<Rental>;
+  getUnavailableDates(carId: string): Promise<{ startDate: Date; endDate: Date }[]>;
+  delete(id: string): Promise<void>;
 }

@@ -1,18 +1,30 @@
 import { RentalRepository } from '../ports/RentalRepository';
 import { Rental } from '../../../domain/rental/Rental';
 import { RentalStatus } from '../../../domain/enums/RentalStatus';
-import { NotFoundError, ConflictError, ValidationError } from '../../../domain/errors/AppError';
-import { logger } from '../../../infrastructure/logging/logger';
+import { NotFoundError, ConflictError, ValidationError } from '../../../core/errors';
+
+/**
+ * Logger interface for dependency injection
+ */
+export interface Logger {
+  info(message: string): void;
+}
 
 interface UpdateRentalInput {
   startDate?: Date;
   endDate?: Date;
 }
 
+/**
+ * Use case: Update rental dates
+ */
 export class UpdateRentalUseCase {
-  constructor(private readonly rentalRepository: RentalRepository) {}
+  constructor(
+    private readonly rentalRepository: RentalRepository,
+    private readonly logger?: Logger
+  ) {}
 
-  async execute(rentalId: number, input: UpdateRentalInput, pricePerDay: number): Promise<Rental> {
+  async execute(rentalId: string, input: UpdateRentalInput, carPricePerDay: number): Promise<Rental> {
     const rental = await this.rentalRepository.findById(rentalId);
     if (!rental) {
       throw new NotFoundError('Rental');
@@ -49,10 +61,10 @@ export class UpdateRentalUseCase {
 
     // Calculate new total price
     const days = Math.ceil((newEndDate.getTime() - newStartDate.getTime()) / (1000 * 60 * 60 * 24));
-    const totalPrice = days * pricePerDay;
+    const totalPrice = days * carPricePerDay;
 
     const updatedRental = await this.rentalRepository.updateDates(rentalId, newStartDate, newEndDate, totalPrice);
-    logger.info(`Rental updated: ID ${rentalId}`);
+    this.logger?.info(`Rental updated: ID ${rentalId}`);
     return updatedRental;
   }
 }

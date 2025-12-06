@@ -4,6 +4,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import http from 'http';
 import dotenv from 'dotenv';
+import { MulterError } from 'multer';
+import path from 'path';
 
 import { typeDefs } from '../graphql/schema';
 import { resolvers } from '../graphql/resolvers';
@@ -27,7 +29,7 @@ export const createExpressApp = () => {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
-  app.use('/uploads', express.static('uploads'));
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
@@ -38,9 +40,11 @@ export const createExpressApp = () => {
   app.post(
     '/upload',
     async (req: Request, res: Response, next: NextFunction) => {
+      logger.info('Upload request received');
       try {
         const authHeader = req.headers.authorization;
         if (!authHeader) {
+          logger.warn('Upload failed: No auth header');
           return res.status(401).json({
             error: 'Authentication required. Please provide an authorization token.',
           });
@@ -52,18 +56,23 @@ export const createExpressApp = () => {
         const user = await authMiddleware(token);
 
         if (!user) {
+          logger.warn('Upload failed: Invalid user token');
           return res.status(401).json({
             error: 'Invalid or expired token. Please login again.',
           });
         }
 
+        logger.info(`Upload request from user: ${user.email} (${user.role})`);
+
         if (user.role !== 'ADMIN') {
+          logger.warn(`Upload failed: User ${user.email} is not ADMIN`);
           return res.status(403).json({
             error: 'Only administrators can upload car images.',
           });
         }
 
         (req as any).user = user;
+        logger.info(`Upload headers content-type: ${req.headers['content-type']}`);
         next();
       } catch (error: any) {
         logger.error('Upload auth error:', error);
@@ -73,13 +82,15 @@ export const createExpressApp = () => {
     upload.single('image'),
     (req: Request & { file?: Express.Multer.File }, res: Response) => {
       if (!req.file) {
+        logger.warn('Upload failed: No file in req.file');
+        logger.warn('Request body keys:', Object.keys(req.body));
         return res.status(400).json({
           error: 'No file uploaded. Please select an image file.',
         });
       }
 
       try {
-        logger.info(`File uploaded: ${req.file.filename}`);
+        logger.info(`File uploaded successfully: ${req.file.filename}`);
         res.json({ imageUrl: `/uploads/${req.file.filename}` });
       } catch (error: any) {
         logger.error('Upload error:', error);
@@ -87,17 +98,25 @@ export const createExpressApp = () => {
       }
     },
     (error: any, _req: Request, res: Response, _next: NextFunction) => {
+      logger.error('Upload middleware caught error:', error);
+      if (error instanceof MulterError) {
+        if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({
+            error: `Unexpected field name: ${error.field}. Expected 'image'.`,
+          });
+        }
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'File size exceeds 5MB limit.' });
+        }
+      }
+      
       if (error instanceof Error) {
         if (error.message === 'Only images are allowed') {
           return res.status(400).json({
             error: 'Invalid file type. Only JPEG, PNG, and GIF images are allowed.',
           });
         }
-        if (error.message.includes('File too large')) {
-          return res.status(400).json({ error: 'File size exceeds 5MB limit.' });
-        }
       }
-      logger.error('Upload middleware error:', error);
       res.status(500).json({ error: error.message || 'Upload failed' });
     },
   );

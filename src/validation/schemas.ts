@@ -53,9 +53,20 @@ export const adminValidation = Joi.object({
   drivingLicenceNumber: stringValidator(5, 50)
 });
 
+// Strong password validator - same requirements for all users
+const strongPasswordValidator = Joi.string()
+  .min(8)
+  .max(100)
+  .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*(),.?":{}|<>])'))
+  .required()
+  .messages({
+    'string.min': 'Password must be at least 8 characters long',
+    'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+  });
+
 export const userValidation = Joi.object({
   email: emailValidator,
-  password: Joi.string().min(6).max(100).required(),
+  password: strongPasswordValidator,
   name: stringValidator(2, 100),
   drivingLicenceNumber: optionalStringValidator(5, 50) // Optional during registration
 });
@@ -99,7 +110,15 @@ export const userUpdateValidation = Joi.object({
 
 export const passwordChangeValidation = Joi.object({
   currentPassword: Joi.string().required(),
-  newPassword: Joi.string().min(6).max(100).required()
+  newPassword: Joi.string()
+    .min(8)
+    .max(100)
+    .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*(),.?":{}|<>])'))
+    .required()
+    .messages({
+      'string.min': 'New password must be at least 8 characters long',
+      'string.pattern.base': 'New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+    })
 });
 
 export const carUpdateValidation = Joi.object({

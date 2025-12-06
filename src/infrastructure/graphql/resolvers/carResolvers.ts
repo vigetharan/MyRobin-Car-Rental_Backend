@@ -1,31 +1,40 @@
 import { PrismaCarRepository } from '../../database/PrismaCarRepository';
-import { ListCarsUseCase } from '../../../application/car/use-cases/ListCarsUseCase';
-import { GetCarByIdUseCase } from '../../../application/car/use-cases/GetCarByIdUseCase';
-import { CreateCarUseCase } from '../../../application/car/use-cases/CreateCarUseCase';
-import { UpdateCarUseCase } from '../../../application/car/use-cases/UpdateCarUseCase';
-import { DeleteCarUseCase } from '../../../application/car/use-cases/DeleteCarUseCase';
-import { GetAvailableCarsUseCase } from '../../../application/car/use-cases/GetAvailableCarsUseCase';
-import { GetCarImagesUseCase } from '../../../application/car/use-cases/GetCarImagesUseCase';
-import { AddCarImageUseCase } from '../../../application/car/use-cases/AddCarImageUseCase';
-import { DeleteCarImageUseCase } from '../../../application/car/use-cases/DeleteCarImageUseCase';
-import { SetPrimaryImageUseCase } from '../../../application/car/use-cases/SetPrimaryImageUseCase';
-import { AuthenticationError, AuthorizationError } from '../../../domain/errors/AppError';
+import { PrismaCarImageRepository } from '../../database/PrismaCarImageRepository';
+import { logger } from '../../logging/logger';
+import {
+  ListCarsUseCase,
+  GetCarByIdUseCase,
+  CreateCarUseCase,
+  UpdateCarUseCase,
+  DeleteCarUseCase,
+  GetAvailableCarsUseCase,
+  GetCarImagesUseCase,
+  AddCarImageUseCase,
+  DeleteCarImageUseCase,
+  SetPrimaryImageUseCase,
+} from '../../../application/car';
+import { AuthenticationError, AuthorizationError } from '../../../core/errors';
 import { Context } from '../../../interface/graphql/Context';
 
+// Infrastructure dependencies (injected into use cases)
 const carRepo = new PrismaCarRepository();
+const carImageRepo = new PrismaCarImageRepository();
 
+/**
+ * Car GraphQL resolvers
+ * Delivery layer - only handles GraphQL concerns and delegates to use cases
+ */
 export const carResolvers = {
   Query: {
     cars: async (_parent: unknown, _args: unknown, _ctx: Context) => {
-      // Existing GraphQL schema returns all cars; we mimic that behavior:
-      const listCars = new ListCarsUseCase(carRepo);
-      const result = await listCars.execute(1, 1000);
+      const useCase = new ListCarsUseCase(carRepo);
+      const result = await useCase.execute(1, 1000);
       return result.data;
     },
 
-    car: async (_parent: unknown, { id }: { id: number }, _ctx: Context) => {
-      const getCar = new GetCarByIdUseCase(carRepo);
-      return getCar.execute(id);
+    car: async (_parent: unknown, { id }: { id: string }, _ctx: Context) => {
+      const useCase = new GetCarByIdUseCase(carRepo);
+      return useCase.execute(id);
     },
 
     availableCars: async (
@@ -33,12 +42,12 @@ export const carResolvers = {
       { startDate, endDate }: { startDate: string; endDate: string },
       _ctx: Context,
     ) => {
-      const useCase = new GetAvailableCarsUseCase();
+      const useCase = new GetAvailableCarsUseCase(carRepo);
       return useCase.execute(new Date(startDate), new Date(endDate));
     },
 
-    carImages: async (_parent: unknown, { carId }: { carId: number }, _ctx: Context) => {
-      const useCase = new GetCarImagesUseCase();
+    carImages: async (_parent: unknown, { carId }: { carId: string }, _ctx: Context) => {
+      const useCase = new GetCarImagesUseCase(carRepo, carImageRepo);
       return useCase.execute(carId);
     },
   },
@@ -52,13 +61,13 @@ export const carResolvers = {
         throw new AuthorizationError('Admin access required');
       }
 
-      const useCase = new CreateCarUseCase(carRepo);
+      const useCase = new CreateCarUseCase(carRepo, logger);
       return useCase.execute(input);
     },
 
     updateCar: async (
       _parent: unknown,
-      { id, input }: { id: number; input: any },
+      { id, input }: { id: string; input: any },
       ctx: Context,
     ) => {
       if (!ctx.user) {
@@ -68,11 +77,11 @@ export const carResolvers = {
         throw new AuthorizationError('Admin access required');
       }
 
-      const useCase = new UpdateCarUseCase(carRepo);
+      const useCase = new UpdateCarUseCase(carRepo, logger);
       return useCase.execute(id, input);
     },
 
-    deleteCar: async (_parent: unknown, { id }: { id: number }, ctx: Context) => {
+    deleteCar: async (_parent: unknown, { id }: { id: string }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
@@ -80,14 +89,14 @@ export const carResolvers = {
         throw new AuthorizationError('Admin access required');
       }
 
-      const useCase = new DeleteCarUseCase(carRepo);
+      const useCase = new DeleteCarUseCase(carRepo, logger);
       await useCase.execute(id);
       return 'Car deleted successfully';
     },
 
     addCarImage: async (
       _parent: unknown,
-      { carId, imageUrl, isPrimary }: { carId: number; imageUrl: string; isPrimary?: boolean },
+      { carId, imageUrl, isPrimary }: { carId: string; imageUrl: string; isPrimary?: boolean },
       ctx: Context,
     ) => {
       if (!ctx.user) {
@@ -97,13 +106,13 @@ export const carResolvers = {
         throw new AuthorizationError('Admin access required');
       }
 
-      const useCase = new AddCarImageUseCase();
+      const useCase = new AddCarImageUseCase(carRepo, carImageRepo, logger);
       return useCase.execute(carId, imageUrl, isPrimary ?? false);
     },
 
     deleteCarImage: async (
       _parent: unknown,
-      { imageId }: { imageId: number },
+      { imageId }: { imageId: string },
       ctx: Context,
     ) => {
       if (!ctx.user) {
@@ -113,14 +122,14 @@ export const carResolvers = {
         throw new AuthorizationError('Admin access required');
       }
 
-      const useCase = new DeleteCarImageUseCase();
+      const useCase = new DeleteCarImageUseCase(carImageRepo, logger);
       await useCase.execute(imageId);
       return 'Image deleted successfully';
     },
 
     setPrimaryImage: async (
       _parent: unknown,
-      { imageId }: { imageId: number },
+      { imageId }: { imageId: string },
       ctx: Context,
     ) => {
       if (!ctx.user) {
@@ -130,7 +139,7 @@ export const carResolvers = {
         throw new AuthorizationError('Admin access required');
       }
 
-      const useCase = new SetPrimaryImageUseCase();
+      const useCase = new SetPrimaryImageUseCase(carImageRepo, logger);
       return useCase.execute(imageId);
     },
   },

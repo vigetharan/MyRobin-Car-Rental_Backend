@@ -1,8 +1,9 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { logger } from '../logging/logger';
 
-const uploadsDir = 'uploads/';
+const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -17,6 +18,7 @@ export const upload = multer({
     },
   }),
   fileFilter: (_req, file, cb) => {
+    logger.info(`Multer processing file: ${file.originalname} (${file.mimetype})`);
     if (!file.mimetype.match(/image\/(jpeg|jpg|png|gif)/)) {
       return cb(new Error('Only images are allowed'));
     }

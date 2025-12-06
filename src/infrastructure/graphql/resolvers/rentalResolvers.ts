@@ -1,21 +1,26 @@
 import { PrismaRentalRepository } from '../../database/PrismaRentalRepository';
 import { PrismaUserRepository } from '../../database/PrismaUserRepository';
 import { PrismaCarRepository } from '../../database/PrismaCarRepository';
-import { CreateRentalUseCase } from '../../../application/rental/use-cases/CreateRentalUseCase';
-import { CancelRentalUseCase } from '../../../application/rental/use-cases/CancelRentalUseCase';
-import { CompleteRentalUseCase } from '../../../application/rental/use-cases/CompleteRentalUseCase';
-import { GetUserRentalsUseCase, GetAllRentalsUseCase } from '../../../application/rental/use-cases/GetUserRentalsUseCase';
-import { GetUserActiveRentalsUseCase } from '../../../application/rental/use-cases/GetUserActiveRentalsUseCase';
-import { GetCarRentalHistoryUseCase } from '../../../application/rental/use-cases/GetCarRentalHistoryUseCase';
-import { GetCarUnavailableDatesUseCase } from '../../../application/rental/use-cases/GetCarUnavailableDatesUseCase';
-import { GetRentalByIdUseCase } from '../../../application/rental/use-cases/GetRentalByIdUseCase';
-import { GetRentalStatsUseCase } from '../../../application/rental/use-cases/GetRentalStatsUseCase';
-import { UpdateRentalUseCase } from '../../../application/rental/use-cases/UpdateRentalUseCase';
-import { ExtendRentalUseCase } from '../../../application/rental/use-cases/ExtendRentalUseCase';
-import { DeleteRentalUseCase } from '../../../application/rental/use-cases/DeleteRentalUseCase';
-import { AuthenticationError, AuthorizationError } from '../../../domain/errors/AppError';
+import { logger } from '../../logging/logger';
+import {
+  CreateRentalUseCase,
+  CancelRentalUseCase,
+  CompleteRentalUseCase,
+  DeleteRentalUseCase,
+  ExtendRentalUseCase,
+  UpdateRentalUseCase,
+  GetRentalByIdUseCase,
+  GetUserRentalsUseCase,
+  GetAllRentalsUseCase,
+  GetUserActiveRentalsUseCase,
+  GetCarRentalHistoryUseCase,
+  GetCarUnavailableDatesUseCase,
+  GetRentalStatsUseCase,
+} from '../../../application/rental';
+import { AuthenticationError, AuthorizationError } from '../../../core/errors';
 import { Context } from '../../../interface/graphql/Context';
 
+// Infrastructure dependencies (injected into use cases)
 const rentalRepo = new PrismaRentalRepository();
 const userRepo = new PrismaUserRepository();
 const carRepo = new PrismaCarRepository();
@@ -38,12 +43,12 @@ export const rentalResolvers = {
       return useCase.execute(ctx.user.id);
     },
 
-    carUnavailableDates: async (_parent: unknown, { carId }: { carId: number }, _ctx: Context) => {
+    carUnavailableDates: async (_parent: unknown, { carId }: { carId: string }, _ctx: Context) => {
       const useCase = new GetCarUnavailableDatesUseCase(rentalRepo);
       return useCase.execute(carId);
     },
 
-    carRentalHistory: async (_parent: unknown, { carId }: { carId: number }, ctx: Context) => {
+    carRentalHistory: async (_parent: unknown, { carId }: { carId: string }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
@@ -55,7 +60,7 @@ export const rentalResolvers = {
     },
 
     // Get single rental by ID
-    rental: async (_parent: unknown, { id }: { id: number }, ctx: Context) => {
+    rental: async (_parent: unknown, { id }: { id: string }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
@@ -99,7 +104,7 @@ export const rentalResolvers = {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
-      const useCase = new CreateRentalUseCase(rentalRepo, userRepo, carRepo);
+      const useCase = new CreateRentalUseCase(rentalRepo, userRepo, carRepo, logger);
       return useCase.execute(ctx.user.id, {
         carId: input.carId,
         startDate: new Date(input.startDate),
@@ -109,27 +114,27 @@ export const rentalResolvers = {
       });
     },
 
-    cancelRental: async (_parent: unknown, { id }: { id: number }, ctx: Context) => {
+    cancelRental: async (_parent: unknown, { id }: { id: string }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
-      const useCase = new CancelRentalUseCase(rentalRepo);
+      const useCase = new CancelRentalUseCase(rentalRepo, logger);
       return useCase.execute(id, ctx.user.id, ctx.user.role);
     },
 
-    completeRental: async (_parent: unknown, { id }: { id: number }, ctx: Context) => {
+    completeRental: async (_parent: unknown, { id }: { id: string }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
       if (ctx.user.role !== 'ADMIN') {
         throw new AuthorizationError('Admin access required');
       }
-      const useCase = new CompleteRentalUseCase(rentalRepo);
+      const useCase = new CompleteRentalUseCase(rentalRepo, logger);
       return useCase.execute(id);
     },
 
     // Admin: Update rental dates
-    updateRental: async (_parent: unknown, { id, input }: { id: number; input: any }, ctx: Context) => {
+    updateRental: async (_parent: unknown, { id, input }: { id: string; input: any }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
@@ -147,7 +152,7 @@ export const rentalResolvers = {
         throw new Error('Car not found');
       }
       
-      const useCase = new UpdateRentalUseCase(rentalRepo);
+      const useCase = new UpdateRentalUseCase(rentalRepo, logger);
       return useCase.execute(id, {
         startDate: input.startDate ? new Date(input.startDate) : undefined,
         endDate: input.endDate ? new Date(input.endDate) : undefined,
@@ -155,7 +160,7 @@ export const rentalResolvers = {
     },
 
     // Extend rental end date
-    extendRental: async (_parent: unknown, { id, input }: { id: number; input: any }, ctx: Context) => {
+    extendRental: async (_parent: unknown, { id, input }: { id: string; input: any }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
@@ -175,19 +180,19 @@ export const rentalResolvers = {
         throw new Error('Car not found');
       }
       
-      const useCase = new ExtendRentalUseCase(rentalRepo);
+      const useCase = new ExtendRentalUseCase(rentalRepo, logger);
       return useCase.execute(id, new Date(input.newEndDate), car.pricePerDay);
     },
 
     // Admin: Delete rental
-    deleteRental: async (_parent: unknown, { id }: { id: number }, ctx: Context) => {
+    deleteRental: async (_parent: unknown, { id }: { id: string }, ctx: Context) => {
       if (!ctx.user) {
         throw new AuthenticationError();
       }
       if (ctx.user.role !== 'ADMIN') {
         throw new AuthorizationError('Admin access required');
       }
-      const useCase = new DeleteRentalUseCase(rentalRepo);
+      const useCase = new DeleteRentalUseCase(rentalRepo, logger);
       await useCase.execute(id);
       return 'Rental deleted successfully';
     },
