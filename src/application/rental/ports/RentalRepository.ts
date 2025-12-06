@@ -13,11 +13,14 @@ export interface CreateRentalData {
 export interface RentalRepository {
   create(data: CreateRentalData): Promise<Rental>;
   findById(id: number): Promise<Rental | null>;
+  findAll(): Promise<Rental[]>;
   findByUserId(userId: number): Promise<Rental[]>;
   findActiveByUserId(userId: number): Promise<Rental[]>;
   findByCarId(carId: number): Promise<Rental[]>;
-  findOverlapping(carId: number, startDate: Date, endDate: Date): Promise<Rental | null>;
-  findUserOverlapping(userId: number, startDate: Date, endDate: Date): Promise<Rental | null>;
+  findOverlapping(carId: number, startDate: Date, endDate: Date, excludeRentalId?: number): Promise<Rental | null>;
+  findUserOverlapping(userId: number, startDate: Date, endDate: Date, excludeRentalId?: number): Promise<Rental | null>;
   updateStatus(id: number, status: RentalStatus): Promise<Rental>;
+  updateDates(id: number, startDate: Date, endDate: Date, totalPrice: number): Promise<Rental>;
   getUnavailableDates(carId: number): Promise<{ startDate: Date; endDate: Date }[]>;
+  delete(id: number): Promise<void>;
 }

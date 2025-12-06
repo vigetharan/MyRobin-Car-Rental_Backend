@@ -28,6 +28,8 @@ export class CreateRentalUseCase {
     }
 
     const finalDrivingLicence = input.drivingLicenceNumber?.trim() || user.drivingLicenceNumber;
+    
+    // All users (including admins) must have a valid driving licence to book
     if (!finalDrivingLicence || finalDrivingLicence.trim().length < 5) {
       throw new ValidationError(
         'Driving licence number is required to rent a car. Please provide your driving licence number.',

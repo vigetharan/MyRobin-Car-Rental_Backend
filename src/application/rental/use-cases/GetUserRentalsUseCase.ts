@@ -8,3 +8,11 @@ export class GetUserRentalsUseCase {
     return this.rentalRepository.findByUserId(userId);
   }
 }
+
+export class GetAllRentalsUseCase {
+  constructor(private readonly rentalRepository: RentalRepository) {}
+
+  async execute(): Promise<Rental[]> {
+    return this.rentalRepository.findAll();
+  }
+}

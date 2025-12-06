@@ -27,6 +27,14 @@ export class PrismaRentalRepository implements RentalRepository {
     return rental as unknown as Rental | null;
   }
 
+  async findAll(): Promise<Rental[]> {
+    const rentals = await this.prisma.rental.findMany({
+      include: { car: true, user: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rentals as unknown as Rental[];
+  }
+
   async findByUserId(userId: number): Promise<Rental[]> {
     const rentals = await this.prisma.rental.findMany({
       where: { userId },
@@ -56,23 +64,25 @@ export class PrismaRentalRepository implements RentalRepository {
     return rentals as unknown as Rental[];
   }
 
-  async findOverlapping(carId: number, startDate: Date, endDate: Date): Promise<Rental | null> {
+  async findOverlapping(carId: number, startDate: Date, endDate: Date, excludeRentalId?: number): Promise<Rental | null> {
     const rental = await this.prisma.rental.findFirst({
       where: {
         carId,
         OR: [{ startDate: { lte: endDate }, endDate: { gte: startDate } }],
         status: { not: RentalStatus.CANCELLED },
+        ...(excludeRentalId && { id: { not: excludeRentalId } }),
       },
     });
     return rental as unknown as Rental | null;
   }
 
-  async findUserOverlapping(userId: number, startDate: Date, endDate: Date): Promise<Rental | null> {
+  async findUserOverlapping(userId: number, startDate: Date, endDate: Date, excludeRentalId?: number): Promise<Rental | null> {
     const rental = await this.prisma.rental.findFirst({
       where: {
         userId,
         OR: [{ startDate: { lte: endDate }, endDate: { gte: startDate } }],
         status: { in: [RentalStatus.PENDING, RentalStatus.ACTIVE] },
+        ...(excludeRentalId && { id: { not: excludeRentalId } }),
       },
     });
     return rental as unknown as Rental | null;
@@ -85,6 +95,19 @@ export class PrismaRentalRepository implements RentalRepository {
       include: { car: true, user: true },
     });
     return rental as unknown as Rental;
+  }
+
+  async updateDates(id: number, startDate: Date, endDate: Date, totalPrice: number): Promise<Rental> {
+    const rental = await this.prisma.rental.update({
+      where: { id },
+      data: { startDate, endDate, totalPrice },
+      include: { car: true, user: true },
+    });
+    return rental as unknown as Rental;
+  }
+
+  async delete(id: number): Promise<void> {
+    await this.prisma.rental.delete({ where: { id } });
   }
 
   async getUnavailableDates(carId: number): Promise<{ startDate: Date; endDate: Date }[]> {

@@ -131,9 +131,27 @@ export const typeDefs = gql`
     role: String!
   }
 
+  input UpdateRentalInput {
+    startDate: String
+    endDate: String
+  }
+
+  input ExtendRentalInput {
+    newEndDate: String!
+  }
+
   type UnavailableDateRange {
     startDate: String!
     endDate: String!
+  }
+
+  type RentalStats {
+    totalRentals: Int!
+    activeRentals: Int!
+    completedRentals: Int!
+    cancelledRentals: Int!
+    pendingRentals: Int!
+    totalRevenue: Float!
   }
 
   type Query {
@@ -142,6 +160,7 @@ export const typeDefs = gql`
     car(id: Int!): Car
     rentals: [Rental!]!
     rental(id: Int!): Rental
+    allRentals: [Rental!]!
     users: [User!]!
     user(id: Int!): User
     availableCars(startDate: String!, endDate: String!): [Car!]!
@@ -149,6 +168,7 @@ export const typeDefs = gql`
     userActiveRentals: [Rental!]!
     carRentalHistory(carId: Int!): [Rental!]!
     carImages(carId: Int!): [CarImage!]!
+    rentalStats: RentalStats!
   }
 
   type Mutation {
@@ -166,6 +186,9 @@ export const typeDefs = gql`
     createRental(input: CreateRentalInput!): Rental!
     cancelRental(id: Int!): Rental!
     completeRental(id: Int!): Rental!
+    updateRental(id: Int!, input: UpdateRentalInput!): Rental!
+    extendRental(id: Int!, input: ExtendRentalInput!): Rental!
+    deleteRental(id: Int!): String!
     updateUser(input: UpdateUserInput!): User!
     changePassword(input: ChangePasswordInput!): String!
     deleteUser(id: Int!): String!

@@ -14,4 +14,5 @@ export const resolvers = {
     ...rentalResolvers.Mutation,
     ...authResolvers.Mutation,
   },
+  Rental: rentalResolvers.Rental,
 };
